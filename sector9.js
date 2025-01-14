@@ -47,6 +47,59 @@ class Point3D {
 		this.z = z;
 	}
 }
+class Pixel {
+	constructor(r, g, b, a) {
+		this.r = r;
+		this.g = g;
+		this.b = b;
+		this.a = a;
+		this.hex = this.getHex();
+	}
+	getHex() {
+		let corR = this.r.toString(16).padStart(2,"0");
+		let corG = this.g.toString(16).padStart(2,"0");
+		let corB = this.b.toString(16).padStart(2,"0");
+		let corA = this.a.toString(16).padStart(2,"0");
+		return "#"+corR+corG+corB+corA;
+	}
+}
+
+
+texturas = [];
+class Tex {
+	constructor(argArquivo) {
+		this.arquivo = argArquivo;
+		this.imagem = new Image();
+		this.imagem.src = this.arquivo;
+		this.tamanhoX = 0;
+		this.tamanhoY = 0;
+		this.pixels = [];
+		this.imagem.onload=()=>{
+			this.tamanhoX = this.imagem.width;
+			this.tamanhoY = this.imagem.height;
+			this.carregarPixels();
+			console.log("Textura " + this.arquivo + " carregada");
+		}
+		texturas.push(this);
+	}
+	carregarPixels() {
+		let canvasTemp = document.createElement('canvas');
+		canvasTemp.width = this.tamanhoX;
+        canvasTemp.height = this.tamanhoY;
+        let contextTemp = canvasTemp.getContext('2d');
+        contextTemp.drawImage(this.imagem, 0, 0, this.tamanhoX, this.tamanhoY);
+        let imageData = contextTemp.getImageData(0, 0, this.tamanhoX, this.tamanhoY);
+        let data = imageData.data;
+		this.pixels = [];
+        for (let i = 0; i < data.length; i += 4) {
+            this.pixels.push(new Pixel(data[i],data[i+1],data[i+2],data[i+3]));
+        }
+	}
+	pixel(x,y) {
+		let indicePixel = (y * this.tamanhoX) + x;
+		return this.pixels[indicePixel].hex;
+	}
+}
 //Classe para pintar um pixel na tela, recebendo X, Y e a cor
 function drawPixel(x, y, color) {
 	context.fillStyle = color;
@@ -67,6 +120,13 @@ function drawCircle(x, y, radius, color) {
 	context.arc(x, y, radius, 0, 2 * Math.PI);
 	context.fillStyle = color;
 	context.fill();
+}
+function drawTex(argTex) {
+	for (let y = 0; y < argTex.tamanhoY; y++) {
+		for (let x = 0; x < argTex.tamanhoX; x++) {
+			drawPixel(x*2,y*2,argTex.pixel(x,y));
+		}
+	}
 }
 
 function clipBehind(argWx, argWy, argWz, argOrigem, argDestino, argDebug = false) {
@@ -540,6 +600,7 @@ function criarSetorTeste1() {
 }
 
 jogador = new Player(50, 50, 0, 0);
+new Tex("texPiso.png");
 criarSetorTeste1();
 
 //Função que limpa a tela e renderiza os setores
@@ -553,6 +614,7 @@ function gameLoop() {
 		renderizar2d();
 	}
 	Object.keys(keysPress).forEach(key => keysPress[key] = false);
+	drawTex(texturas[0]);
 }
 function renderizar2d() {
 	setores.forEach(sector => sector.render2d());	
