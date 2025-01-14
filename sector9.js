@@ -102,10 +102,23 @@ class Tex {
 }
 //Classe para pintar um pixel na tela, recebendo X, Y e a cor
 function drawPixel(x, y, color) {
-	context.fillStyle = color;
 	x = Math.round(x);
 	y = Math.round(y);
-	context.fillRect(x, y, 1, 1);
+	if (x>=0 && x<resX && y>=0 && y<resY) {
+		context.fillStyle = color;
+		context.fillRect(x, y, 1, 1);
+	}
+}
+function drawWall(x, y1, y2, color) {
+	x = Math.round(x);
+	if (x >= 1 && x < resX - 1) {
+		context.fillStyle = color;
+		y1 = Math.round(y1);
+		y2 = Math.round(y2);
+		if (y2 <= 1) { y2 = 1 };
+		if (y1 >= resY) { y1 = resY - 1 };
+		context.fillRect(x, y1, 1, y2-y1);
+	}
 }
 //Desenha um segmento de reta entre dois pontos 2D usando context.lineTo
 function drawLine(p1, p2, color) {
@@ -157,6 +170,7 @@ class Line {
 		this.portal = false;
 		this.debugger = false;
 		this.debuggerFx = false;
+		this.textura = texturas[0];
 	}
 	//Desenha o segmento de reta na tela
 	render2d() {
@@ -190,17 +204,17 @@ class Line {
 			return;
 		}
 		if (wy[0]<0.1) {
-			this.debug("Wy0 tá fora");
+			//this.debug("Wy0 tá fora");
 			//this.debug(wx);
-			clipBehind(wx, wy, wz, 0, 1, this.debugger);
-			clipBehind(wx, wy, wz, 2, 3, this.debugger);
+			clipBehind(wx, wy, wz, 0, 1);
+			clipBehind(wx, wy, wz, 2, 3);
 			//this.debug(wx);
 			//clipBehind(wx[2], wy[2], wz[2], wx[3], wy[3], wz[3]);
 		}
 		if (wy[1]<0.1) {
-			this.debug("Wy1 tá fora");
-			clipBehind(wx, wy, wz, 1, 0, this.debugger);
-			clipBehind(wx, wy, wz, 3, 2, this.debugger);
+			//this.debug("Wy1 tá fora");
+			clipBehind(wx, wy, wz, 1, 0);
+			clipBehind(wx, wy, wz, 3, 2);
 			//clipBehind(&wx[1], &wy[1], &wz[1], wx[0], wy[0], wz[0]);
 			//clipBehind(&wx[3], &wy[3], &wz[3], wx[2], wy[2], wz[2]);
 		}
@@ -214,12 +228,31 @@ class Line {
 		let w2 = new Point(wx[1],wy[1]);
 		let w3 = new Point(wx[2],wy[2]);
 		let w4 = new Point(wx[3],wy[3]);
+
+		this.renderTex(w1, w2, w3, w4);
+
+		//drawWall(wx[0], wx[1], wy[0], wy[1]);
+		/*
+		let dyb = wy[1]-wy[0];
+		let dyt = wy[3]-wy[2];
+		let dx = wx[1]-wx[0];
+		if (dx==0) { dx=1; }
+		let xs = wx[0];
+		for (let x = xs; x < wx[1]; x++) {
+			let yb = dyb*(x - xs+0.5)/dx + wy[0];
+			let yt = dyt*(x - xs+0.5)/dx + wy[2];
+			drawWall(x,yb,yt,"black");
+			drawPixel(x,yb,"black");
+			drawPixel(x,yt,"black");
+		}
+			*/
+
 		if (this.debugger) {
 			if (this.debuggerFx) {
-				drawPixel(wx[0],wy[0],"blue");
-				drawPixel(wx[1],wy[1],"blue");
-				drawPixel(wx[2],wy[2],"blue");
-				drawPixel(wx[3],wy[3],"blue");
+				drawCircle(w1.x,w1.y,5,"red");
+				drawCircle(w2.x,w2.y,5,"yellow");
+				drawCircle(w3.x,w3.y,5,"green");
+				drawCircle(w4.x,w4.y,5,"cyan");
 
 				drawLine(w1,w2,"green");
 				drawLine(w3,w4,"yellow");
@@ -239,6 +272,48 @@ class Line {
 			drawPixel(wx[3],wy[3],"blue");
 		}
 	}
+	renderTex(w1, w2, w3, w4) {
+		context.save();
+		context.beginPath();
+		context.moveTo(w1.x, w1.y);
+        context.lineTo(w2.x, w2.y);
+        context.lineTo(w4.x, w4.y);
+        context.lineTo(w3.x, w3.y);
+        context.closePath();
+        context.clip();
+
+        const transform = context.getTransform();
+        context.setTransform(
+            (w2.x - w1.x) / this.textura.tamanhoX,
+            (w2.y - w1.y) / this.textura.tamanhoX,
+            (w3.x - w1.x) / this.textura.tamanhoY,
+            (w3.y - w1.y) / this.textura.tamanhoY,
+            w1.x,
+            w1.y
+        );
+        context.drawImage(this.textura.imagem, 0, 0);
+		context.setTransform(transform);
+        
+		let my1 = (w1.y - w3.y) / 2;
+		let my2 = (w2.y - w4.y) / 2;
+		let dy = (w4.y - w1.y);
+		let dx = (w2.x - w1.x);
+
+		if (this.debugger) {
+			console.log(my1/my2);
+			drawCircle(w1.x,w1.y - my1,10,"black");
+			drawCircle(w2.x,w2.y - my2,10,"blue");
+			drawLine(w1,w4,"red");
+			drawLine(w2,w3,"red");
+			drawCircle(w1.x + (dx / (2 * (my2/my1))),w1.y + (dy / 2),10,"red");
+			
+		}
+		//drawCircle(w1.x + (dx / 2),w2.y + (dy2 / 2),10,"black");
+		context.restore();
+	}
+	interpolate(x1, x2, x3, x4, t, u) {
+        return (1 - t) * ((1 - u) * x1 + u * x3) + t * ((1 - u) * x2 + u * x4);
+    }
 	//Cria um setor a partir deste segmento de reta
 	createSector() {
 		let novoSetor = new Sector();
@@ -290,6 +365,7 @@ class Line {
 			}
 		}
 	}
+	
 }
 
 var setores = [];
@@ -566,7 +642,7 @@ function criarSetorCubo() {
 		new Point(100,100),
 		new Point(25,100)
 	])
-	//sectorCriacao.lines[2].debug(true);
+	sectorCriacao.lines[0].debug(true);
 }
 
 function criarSetorTeste1() {
@@ -601,7 +677,7 @@ function criarSetorTeste1() {
 
 jogador = new Player(50, 50, 0, 0);
 new Tex("texPiso.png");
-criarSetorTeste1();
+criarSetorCubo();
 
 //Função que limpa a tela e renderiza os setores
 var exibirMapa = false;
